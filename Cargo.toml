@@ -1,0 +1,2 @@
+[workspace]
+members = ["orgrs", "orgrc", "orgcom"]
