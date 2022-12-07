@@ -3,8 +3,10 @@ use jsonrpc_core::futures::future::Future;
 use jsonrpc_core_client::transports::ws;
 use jsonrpc_derive::rpc;
 use serde_json::json;
+use serde_json::*;
 use tokio::runtime::Runtime;
 use url::Url;
+use jsonrpc_core::futures::FutureExt;
 
 /// Org Mode Server - provides websocket access to org files.
 #[derive(Parser, Debug)]
@@ -50,16 +52,16 @@ fn main() {
 	let client = rt.block_on(ws::connect::<gen_client::Client>(&client_url)).unwrap();
 
 	let mut interval = serde_json::map::Map::new();
-	map.insert("interval".to_string(), 1000.into());
+	interval.insert("interval".to_string(), 1000.into());
 
 	client
            .clone()
            .ping(json!({"interval": 1000}).into())
-           .map(|res| println!("ping = {}", res))
-           .wait()
-	   .unwrap();
+           .map(|res| println!("ping = {:?}", res))
+           ;
+	   //.unwrap();
 
-	rt.shutdown_now().wait().unwrap();
+	rt.shutdown_timeout(tokio::time::Duration::from_secs(5));
 
 
 }
