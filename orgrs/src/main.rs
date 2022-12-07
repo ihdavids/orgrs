@@ -18,6 +18,6 @@ struct Args {
 fn main() {
     let args = Args::parse();
     let server = server::OrgServer {};
-    server.Start();
     println!("Hello, world! {}", args.count);
+    server.start();
 }
