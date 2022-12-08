@@ -1,9 +1,9 @@
 use clap::Parser;
-use jsonrpc_core::futures::future::Future;
+//use jsonrpc_core::futures::future::Future;
 use jsonrpc_core_client::transports::ws;
 use jsonrpc_derive::rpc;
 use serde_json::json;
-use serde_json::*;
+//use serde_json::*;
 use tokio::runtime::Runtime;
 use url::Url;
 use jsonrpc_core::futures::FutureExt;
@@ -42,11 +42,12 @@ pub trait Rpc {
 }
 
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = Args::parse();
     println!("Hello, world! {}", args.name);
 
-    let mut rt = Runtime::new().unwrap();
+    let rt = Runtime::new().unwrap();
 
 	let client_url = Url::parse("ws://127.0.0.1:8888/kurento").unwrap();
 	let client = rt.block_on(ws::connect::<gen_client::Client>(&client_url)).unwrap();
@@ -58,6 +59,7 @@ fn main() {
            .clone()
            .ping(json!({"interval": 1000}).into())
            .map(|res| println!("ping = {:?}", res))
+           .await
            ;
 	   //.unwrap();
 
@@ -67,7 +69,7 @@ fn main() {
 }
 
 
-
+/* 
 /// Rpc trait
 #[rpc(client)]
 pub trait Rpc {
@@ -87,3 +89,4 @@ pub trait Rpc {
 	#[rpc(name = "callAsync")]
 	fn call(&self, a: u64) -> FutureResult<String, Error>;
 }
+*/
