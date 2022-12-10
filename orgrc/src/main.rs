@@ -1,10 +1,8 @@
 use clap::Parser;
 //use jsonrpc_core::futures::future::Future;
 use jsonrpc_core_client::transports::ws;
-use jsonrpc_derive::rpc;
 use serde_json::json;
 //use serde_json::*;
-use tokio::runtime::Runtime;
 use url::Url;
 use jsonrpc_core::futures::FutureExt;
 
@@ -20,29 +18,6 @@ struct Args {
    #[arg(short, long, default_value_t = 1)]
    count: u8,
 }
-
-
-/* 
-/// Rpc trait
-#[rpc(client)]
-pub trait Rpc {
-	/// Returns a protocol version
-	#[rpc(name = "protocolVersion")]
-	fn protocol_version(&self) -> Result<String>;
-
-	/// Adds two numbers and returns a result
-	#[rpc(name = "add", alias("callAsyncMetaAlias"))]
-	fn add(&self, a: u64, b: u64) -> Result<u64>;
-
-	/// Ping server expect return in interval ms
-	#[rpc(name = "ping", raw_params)]
-	fn ping(&self, params: Value) -> Result<String>;
-
-	/// Performs asynchronous operation
-	#[rpc(name = "callAsync")]
-	fn call(&self, a: u64) -> FutureResult<String, Error>;
-}
-*/
 
 
 #[tokio::main]
@@ -65,26 +40,3 @@ async fn main() {
            ;
 	   //.unwrap();
 }
-
-
-/* 
-/// Rpc trait
-#[rpc(client)]
-pub trait Rpc {
-	/// Returns a protocol version
-	#[rpc(name = "protocolVersion")]
-	fn protocol_version(&self) -> Result<String>;
-
-	/// Adds two numbers and returns a result
-	#[rpc(name = "add", alias("callAsyncMetaAlias"))]
-	fn add(&self, a: u64, b: u64) -> Result<u64>;
-
-	/// Ping server expect return in interval ms
-	#[rpc(name = "ping", raw_params)]
-	fn ping(&self, params: Value) -> Result<String>;
-
-	/// Performs asynchronous operation
-	#[rpc(name = "callAsync")]
-	fn call(&self, a: u64) -> FutureResult<String, Error>;
-}
-*/
