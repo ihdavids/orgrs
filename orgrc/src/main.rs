@@ -1,32 +1,26 @@
-use clap::Parser;
+//use clap::Parser;
 //use jsonrpc_core::futures::future::Future;
 use jsonrpc_core_client::transports::ws;
-use serde_json::json;
+//use serde_json::json;
 //use serde_json::*;
 use url::Url;
 use jsonrpc_core::futures::FutureExt;
-
-/// Org Mode Server - provides websocket access to org files.
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-   /// Name of the person to greet
-   #[arg(short, long)]
-   name: String,
-
-   /// Number of times to greet
-   #[arg(short, long, default_value_t = 1)]
-   count: u8,
-}
-
+use clap_conf::*;
 
 #[tokio::main]
 async fn main() {
-    let args = Args::parse();
-    println!("Hello, world! {}", args.name);
+	let args = clap_app!(orgrc => 
+								(version: crate_version!())
+								(author: "Ian Davids")
+								(about: "OrgRs command line utility")
+								(@arg connect: -c "Server connection")
+							).get_matches();
+	let cfg = clap_conf::with_toml_env(&args, &["{HOME}/.config/orgrc/init.toml","{HOME}/.orgrc.toml","./.orgrc.toml"]);
+	let connect_str = cfg.grab().arg("connect").conf("server.connect").env("ORGRC_CONNECT").def("ws://127.0.0.1:3030/orgrs");
+    println!("Hello, world! {}", connect_str);
 
 
-	let client_url = Url::parse("ws://127.0.0.1:3030").unwrap();
+	let client_url = Url::parse(&connect_str).unwrap();
 	let client = ws::connect::<orgcom::gen_client::Client>(&client_url).await.unwrap();
 
 	let mut interval = serde_json::map::Map::new();
