@@ -17,3 +17,4 @@ orgcom = { path = "../orgcom"}
 clap_conf = "0.2.0"
 orgize = { version = "0.9.0", features = ["chrono", "indexmap"] }
 glob = "0.3.0"
+notify = {version="5.0.0", default-features = false, feature=["macos_kqueue"] }

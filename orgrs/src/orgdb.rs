@@ -1,8 +1,8 @@
 use orgize::{Org, ParseConfig};
 use tokio::io::AsyncReadExt;
 use glob::glob;
-use std::collections::HashMap;
-
+use std::{collections::HashMap, path::Path};
+use notify::{Watcher, RecommendedWatcher, RecursiveMode};
 /* 
 Org::parse_custom(
     "* TASK Title 1",
@@ -45,5 +45,21 @@ impl OrgDb<'_> {
         for (name, org) in &self.byFile {
             println!("-> {name}");
         }
+    }
+
+    pub async fn watch(&self, path: &String) -> notify::Result<()> {
+            // Automatically select the best implementation for your platform.
+        let mut watcher = notify::recommended_watcher(|res| {
+            match res {
+                Ok(event) => println!("event: {:?}", event),
+                Err(e) => println!("watch error: {:?}", e),
+            }
+        })?;
+
+        // Add a path to be watched. All files and directories at that path and
+        // below will be monitored for changes.
+        watcher.watch(Path::new(path), RecursiveMode::Recursive)?;
+
+        Ok(())
     }
 }
