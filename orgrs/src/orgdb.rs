@@ -15,10 +15,9 @@ Org::parse_custom(
 pub struct OrgDb;
 
 impl OrgDb {
-   async fn parse_org_file(filename: &String) 
+   async fn parse_org_file(filename: &String) -> Result<Org,std::io::Error>
    {
-        let mut file = tokio::fs::File::open("foo.txt").await.expect("Failed to read org file off disk");
-        let mut contents = vec![];
-        file.read_buf(&mut contents).await.expect("Test?");
+        let contents = tokio::fs::read_to_string(filename).await?;
+        Ok(Org::parse_string(contents))
    }
 }
