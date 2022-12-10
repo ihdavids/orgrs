@@ -14,3 +14,4 @@ jsonrpc-ws-server = "18.0.0"
 tokio = "1.23.0"
 ws = "0.9.2"
 orgcom = { path = "../orgcom"}
+clap_conf = "0.2.0"

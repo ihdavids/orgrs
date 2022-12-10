@@ -1209,6 +1209,7 @@ name = "orgrs"
 version = "0.1.0"
 dependencies = [
  "clap 4.0.26",
+ "clap_conf",
  "jsonrpc-core 18.0.0",
  "jsonrpc-core-client 18.0.0",
  "jsonrpc-derive",
