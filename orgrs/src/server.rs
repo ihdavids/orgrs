@@ -1,8 +1,8 @@
 use jsonrpc_ws_server::*;
 use jsonrpc_core::futures::future::{self};
 use jsonrpc_core::{BoxFuture, IoHandler, Result};
-use orgcom::Rpc;
 use std::net::SocketAddr;
+use orgcom::Rpc;
 
 
 struct RpcImpl;
