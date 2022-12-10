@@ -1,7 +1,7 @@
 use jsonrpc_ws_server::*;
-use jsonrpc_ws_server::jsonrpc_core::*;
+//use jsonrpc_ws_server::jsonrpc_core::Value;
 
-//use jsonrpc_core;
+//use jsonrpc_core::Value;
 //use ws;
 //use self::server_utils::tokio;
 
@@ -10,24 +10,10 @@ use jsonrpc_core::futures::future::{self};
 //use jsonrpc_core::futures::{self, Future};
 //use jsonrpc_core::{self, FutureResult};
 use jsonrpc_core::{BoxFuture, IoHandler, Result};
-use jsonrpc_derive::rpc;
+//use jsonrpc_derive::rpc;
 //use futures_util::future::*;
+use orgcom::Rpc;
 
-/// Rpc trait
-#[rpc]
-pub trait Rpc {
-	/// Returns a protocol version
-	#[rpc(name = "protocolVersion")]
-	fn protocol_version(&self) -> Result<String>;
-
-	/// Adds two numbers and returns a result
-	#[rpc(name = "add", alias("callAsyncMetaAlias"))]
-	fn add(&self, a: u64, b: u64) -> Result<u64>;
-
-	/// Performs asynchronous operation
-	#[rpc(name = "callAsync")]
-	fn call(&self, a: u64) -> BoxFuture<Result<String>>;
-}
 
 struct RpcImpl;
 
@@ -37,6 +23,7 @@ impl Rpc for RpcImpl {
 	}
 
 	fn add(&self, a: u64, b: u64) -> Result<u64> {
+		println!("ADDING A{} and B{}",a,b);
 		Ok(a + b)
 	}
 
@@ -81,14 +68,19 @@ impl OrgServer
         server.wait();
 */
         let mut io = IoHandler::new();
-        io.add_method("say_hello", |_| async {
-            Ok(Value::String("Hello World!".into()))
-        });
-    
+        //io.add_method("say_hello", |_| async {
+        //    Ok(jsonrpc_ws_server::jsonrpc_core::Value::String("Hello World!".into()))
+        //});
+		io.extend_with(RpcImpl.to_delegate());
+   
+		println!("STARTING SERVER");
         let server = ServerBuilder::new(io)
             .start(&"0.0.0.0:3030".parse().unwrap())
             .expect("Server must start with no issues");
     
-        server.wait().unwrap()    
+		println!("RUNNING WAIT ON SERVER");
+        let v = server.wait().unwrap();
+		println!("WAIT UNRAPPED");
+		return v;
     }
 }

@@ -21,6 +21,8 @@ struct Args {
    count: u8,
 }
 
+
+/* 
 /// Rpc trait
 #[rpc(client)]
 pub trait Rpc {
@@ -40,6 +42,7 @@ pub trait Rpc {
 	#[rpc(name = "callAsync")]
 	fn call(&self, a: u64) -> FutureResult<String, Error>;
 }
+*/
 
 
 #[tokio::main]
@@ -47,25 +50,20 @@ async fn main() {
     let args = Args::parse();
     println!("Hello, world! {}", args.name);
 
-    let rt = Runtime::new().unwrap();
 
-	let client_url = Url::parse("ws://127.0.0.1:8888/kurento").unwrap();
-	let client = rt.block_on(ws::connect::<gen_client::Client>(&client_url)).unwrap();
+	let client_url = Url::parse("ws://127.0.0.1:3030").unwrap();
+	let client = ws::connect::<orgcom::gen_client::Client>(&client_url).await.unwrap();
 
 	let mut interval = serde_json::map::Map::new();
 	interval.insert("interval".to_string(), 1000.into());
 
 	client
            .clone()
-           .ping(json!({"interval": 1000}).into())
-           .map(|res| println!("ping = {:?}", res))
+    	   .add(42,42)
+           .map(|res| println!("add = {:?}", res))
            .await
            ;
 	   //.unwrap();
-
-	rt.shutdown_timeout(tokio::time::Duration::from_secs(5));
-
-
 }
 
 

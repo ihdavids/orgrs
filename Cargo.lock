@@ -1134,6 +1134,12 @@ dependencies = [
 [[package]]
 name = "orgcom"
 version = "0.1.0"
+dependencies = [
+ "jsonrpc-core 18.0.0",
+ "jsonrpc-core-client 18.0.0",
+ "jsonrpc-derive",
+ "jsonrpc-ws-server",
+]
 
 [[package]]
 name = "orgrc"
@@ -1146,6 +1152,7 @@ dependencies = [
  "jsonrpc-derive",
  "jsonrpc-ws-client",
  "map",
+ "orgcom",
  "serde 1.0.149",
  "serde_json",
  "tokio 1.23.0",
@@ -1162,6 +1169,7 @@ dependencies = [
  "jsonrpc-core-client 18.0.0",
  "jsonrpc-derive",
  "jsonrpc-ws-server",
+ "orgcom",
  "tokio 1.23.0",
  "ws",
 ]
