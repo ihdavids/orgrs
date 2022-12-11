@@ -15,20 +15,31 @@ Org::parse_custom(
 */
 
 pub struct OrgDb<'a> {
-    pub byFile: HashMap<String,Org<'a>>
+    pub by_file: HashMap<String,Org<'a>>
 }
 
 impl OrgDb<'_> {
    pub fn new<'a>() -> OrgDb<'a> {
-        OrgDb { byFile: HashMap::new() }
+        OrgDb { by_file: HashMap::new() }
    }
 
    pub async fn parse_org_file<'a>(filename: &String) -> Result<Org<'a>,std::io::Error>
    {
         println!("READING: {}", filename.as_str());
-        let contents = tokio::fs::read_to_string(filename).await?;
+        // Have UTF-8 problems with this pathway.
+        //let contents = tokio::fs::read_to_string(filename).await?;
+
+        // This is more expensive than the alternative but it can handle non UTF-8 Files
+        // Not sure which one I should support. Or optional?
+        let mut buf = vec![];
+        {
+            let mut file = tokio::fs::File::open(filename).await?;
+            file.read_to_end(&mut buf).await?;
+        }
+        let contents = String::from_utf8_lossy (&buf);
+
         println!("PARSING: {}", filename.as_str());
-        Ok(Org::parse_string(contents))
+        Ok(Org::parse_string(contents.to_string()))
    }
 
    pub async fn reload_all(&mut self, path: &String) {
@@ -37,12 +48,12 @@ impl OrgDb<'_> {
             let name = f.as_os_str().to_str().unwrap();
             let nm = String::from(name);
             let org: Org = OrgDb::parse_org_file(&nm).await.unwrap();
-            self.byFile.insert(nm.clone(), org);
+            self.by_file.insert(nm.clone(), org);
         }
     }
 
     pub async fn list_all_files(&self) {
-        for (name, org) in &self.byFile {
+        for (name, _) in &self.by_file {
             println!("-> {name}");
         }
     }
