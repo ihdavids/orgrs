@@ -10,15 +10,18 @@ async fn main() {
 								(author: "Ian Davids")
 								(about: "OrgRs Org Mode Server")
 								(@arg connect: -c --connect +takes_value "Server connection")
-								(@arg org: -o --orgglob +takes_value "org glob")
+								(@arg org: -o --orgdir +takes_value "org directory")
 							).get_matches();
 	let cfg = clap_conf::with_toml_env(&args, &["{HOME}/.config/orgrs/init.toml","{HOME}/.orgrs.toml","./.orgrs.toml"]);
 	let connect_str = cfg.grab().arg("connect").conf("server.connect").env("ORGRS_CONNECT").def("ws://127.0.0.1:3030/orgrs");
-	let org_glob = cfg.grab().arg("org").conf("org.glob").env("ORGRS_GLOB").def("**/*.org");
+
+	let org_dir = cfg.grab().arg("org").conf("org.dir").env("ORGRS_DIR").def("./");
+    let org_glob = org_dir.clone() + "**/*.org";
 
     let mut db = orgdb::OrgDb::new();
     db.reload_all(&org_glob).await;
     db.list_all_files().await;
+    db.watch(&org_dir).await.unwrap();
 
     let server = server::OrgServer {};
     server.start(&connect_str);

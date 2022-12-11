@@ -1,8 +1,9 @@
 use orgize::{Org, ParseConfig};
 use tokio::io::AsyncReadExt;
 use glob::glob;
-use std::{collections::HashMap, path::Path};
-use notify::{Watcher, RecommendedWatcher, RecursiveMode};
+use std::{collections::HashMap, path::Path, borrow::BorrowMut};
+use notify::{EventKind, Watcher, RecommendedWatcher, RecursiveMode, ReadDirectoryChangesWatcher};
+use std::sync::Arc;
 /* 
 Org::parse_custom(
     "* TASK Title 1",
@@ -15,12 +16,15 @@ Org::parse_custom(
 */
 
 pub struct OrgDb<'a> {
-    pub by_file: HashMap<String,Org<'a>>
+    pub by_file: HashMap<String,Org<'a>>,
+    pub watcher: Option<ReadDirectoryChangesWatcher>
 }
 
+//static mut db: Arc<OrgDb> = Arc::new(OrgDb::new()); 
+
 impl OrgDb<'_> {
-   pub fn new<'a>() -> OrgDb<'a> {
-        OrgDb { by_file: HashMap::new() }
+   pub fn new<'a>() -> Arc<OrgDb<'a>> {
+        Arc::new(OrgDb { by_file: HashMap::new() , watcher: None})
    }
 
    pub async fn parse_org_file<'a>(filename: &String) -> Result<Org<'a>,std::io::Error>
@@ -52,25 +56,51 @@ impl OrgDb<'_> {
         }
     }
 
+    pub async fn reload(&mut self, nm: &String) {
+        let org: Org = OrgDb::parse_org_file(nm).await.unwrap();
+        self.by_file.insert(nm.clone(), org);
+    }
+
     pub async fn list_all_files(&self) {
         for (name, _) in &self.by_file {
             println!("-> {name}");
         }
     }
 
-    pub async fn watch(&self, path: &String) -> notify::Result<()> {
-            // Automatically select the best implementation for your platform.
-        let mut watcher = notify::recommended_watcher(|res| {
+    pub fn watch_handler(db: Arc<OrgDb>, res: Result<notify::Event, notify::Error>) -> () {
             match res {
-                Ok(event) => println!("event: {:?}", event),
-                Err(e) => println!("watch error: {:?}", e),
+                Ok(event) => {
+                    println!("event: {:?}", event);
+                    match event.kind {
+                        Modify => {
+                            for name in event.paths {
+                                let tmp = String::from(name.to_string_lossy());
+                                db.borrow_mut().reload(&tmp);
+                            }
+                        }
+                    }
+                },
+                Err(e) => {
+                    println!("watch error: {:?}", e);
+                }
             }
-        })?;
+    }
+
+    pub async fn watch(db: Arc<OrgDb<'_>>, path: &String) -> notify::Result<()> {
+            // Automatically select the best implementation for your platform.
+        db.borrow_mut().watcher = Some(notify::recommended_watcher(
+            |res: Result<notify::Event, notify::Error>| {OrgDb::watch_handler(db, res)})?);
 
         // Add a path to be watched. All files and directories at that path and
-        // below will be monitored for changes.
-        watcher.watch(Path::new(path), RecursiveMode::Recursive)?;
-
+        // below will be monitored for changes.A
+        match db.borrow_mut().watcher {
+            Some(w) => {
+                w.watch(Path::new(path), RecursiveMode::Recursive)?;
+            }
+            None => {
+                println!("Failed to start up watcher!");
+            }
+        }
         Ok(())
     }
 }
