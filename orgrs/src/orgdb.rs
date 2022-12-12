@@ -97,32 +97,26 @@ impl OrgDb<'_> {
             }
     }
 
-    pub fn watch(db: &mut Arc<Mutex<OrgDb<'_>>>, path: &String) -> notify::Result<()> {
+    pub fn watch(mut db: Arc<Mutex<OrgDb>>, path: &String) -> notify::Result<()> {
         let weak_db = Arc::downgrade(&db.clone());
 
         // Automatically select the best implementation for your platform.
 
         let xdb = db.borrow_mut();
-        match xdb.lock() {
-            Ok(ydb) => {
-                ydb.watcher = Some(
-                    notify::recommended_watcher(move |res: Result<notify::Event, notify::Error> | {
-                        OrgDb::watch_handler(&weak_db, res)
-                    })?
-                );
-                // Add a path to be watched. All files and directories at that path and
-                // below will be monitored for changes.A
-                match ydb.watcher {
-                    Some(w) => {
-                        w.watch(Path::new(path), RecursiveMode::Recursive)?;
-                    }
-                    None => {
-                        println!("Failed to start up watcher!");
-                    }
-                }
+        let mut ydb = xdb.lock().unwrap();
+        ydb.watcher = Some(
+                notify::recommended_watcher(move |res: Result<notify::Event, notify::Error> | {
+                    OrgDb::watch_handler(&weak_db, res)
+                })?
+            );
+        // Add a path to be watched. All files and directories at that path and
+        // below will be monitored for changes.A
+        match ydb.watcher {
+            Some(w) => {
+                w.borrow_mut().watch(Path::new(path), RecursiveMode::Recursive)?;
             }
-            Err(e) => {
-                println!("Failed to setup directory watcher!");
+            None => {
+                println!("Failed to start up watcher!");
             }
         }
 

@@ -21,11 +21,11 @@ async fn main() {
     let mut db = orgdb::OrgDb::new();
     db.lock().unwrap().reload_all(&org_glob).await;
     db.lock().unwrap().list_all_files().await;
-    orgdb::OrgDb::watch(&mut db, &org_dir);
+    orgdb::OrgDb::watch(db.clone(), &org_dir);
     //db.reload_all(&org_glob).await;
     //db.list_all_files().await;
     //db.watch(&org_dir).await.unwrap();
-
+    
     let server = server::OrgServer {};
     server.start(&connect_str);
 }
