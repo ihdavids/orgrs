@@ -3,7 +3,7 @@ use tokio::io::AsyncReadExt;
 use glob::glob;
 use std::{collections::HashMap, path::Path, borrow::BorrowMut};
 use notify::{EventKind, Watcher, RecommendedWatcher, RecursiveMode, ReadDirectoryChangesWatcher};
-use std::sync::Arc;
+use std::sync::{Arc, Weak, Mutex};
 /* 
 Org::parse_custom(
     "* TASK Title 1",
@@ -23,8 +23,8 @@ pub struct OrgDb<'a> {
 //static mut db: Arc<OrgDb> = Arc::new(OrgDb::new()); 
 
 impl OrgDb<'_> {
-   pub fn new<'a>() -> Arc<OrgDb<'a>> {
-        Arc::new(OrgDb { by_file: HashMap::new() , watcher: None})
+   pub fn new<'a>() -> Arc<Mutex<OrgDb<'a>>> {
+        Arc::new(Mutex::new(OrgDb { by_file: HashMap::new() , watcher: None}))
    }
 
    pub async fn parse_org_file<'a>(filename: &String) -> Result<Org<'a>,std::io::Error>
@@ -67,7 +67,7 @@ impl OrgDb<'_> {
         }
     }
 
-    pub fn watch_handler(db: Arc<OrgDb>, res: Result<notify::Event, notify::Error>) -> () {
+    pub fn watch_handler(weak_db: &Weak<Mutex<OrgDb>>, res: Result<notify::Event, notify::Error>) -> () {
             match res {
                 Ok(event) => {
                     println!("event: {:?}", event);
@@ -75,7 +75,18 @@ impl OrgDb<'_> {
                         Modify => {
                             for name in event.paths {
                                 let tmp = String::from(name.to_string_lossy());
-                                db.borrow_mut().reload(&tmp);
+                                weak_db.upgrade()
+                                    .map( |db| {
+                                        let xdb = db.borrow_mut();
+                                        match xdb.lock() {
+                                            Ok(ydb) => {
+                                                ydb.reload(&tmp);
+                                            }
+                                            Err(e) => {
+                                                println!("Failed to update, could not aquire lock!");
+                                            }
+                                        }
+                                    });
                             }
                         }
                     }
@@ -86,21 +97,35 @@ impl OrgDb<'_> {
             }
     }
 
-    pub async fn watch(db: Arc<OrgDb<'_>>, path: &String) -> notify::Result<()> {
-            // Automatically select the best implementation for your platform.
-        db.borrow_mut().watcher = Some(notify::recommended_watcher(
-            |res: Result<notify::Event, notify::Error>| {OrgDb::watch_handler(db, res)})?);
+    pub fn watch(db: &mut Arc<Mutex<OrgDb<'_>>>, path: &String) -> notify::Result<()> {
+        let weak_db = Arc::downgrade(&db.clone());
 
-        // Add a path to be watched. All files and directories at that path and
-        // below will be monitored for changes.A
-        match db.borrow_mut().watcher {
-            Some(w) => {
-                w.watch(Path::new(path), RecursiveMode::Recursive)?;
+        // Automatically select the best implementation for your platform.
+
+        let xdb = db.borrow_mut();
+        match xdb.lock() {
+            Ok(ydb) => {
+                ydb.watcher = Some(
+                    notify::recommended_watcher(move |res: Result<notify::Event, notify::Error> | {
+                        OrgDb::watch_handler(&weak_db, res)
+                    })?
+                );
+                // Add a path to be watched. All files and directories at that path and
+                // below will be monitored for changes.A
+                match ydb.watcher {
+                    Some(w) => {
+                        w.watch(Path::new(path), RecursiveMode::Recursive)?;
+                    }
+                    None => {
+                        println!("Failed to start up watcher!");
+                    }
+                }
             }
-            None => {
-                println!("Failed to start up watcher!");
+            Err(e) => {
+                println!("Failed to setup directory watcher!");
             }
         }
+
         Ok(())
     }
 }
