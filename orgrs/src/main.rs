@@ -18,10 +18,12 @@ async fn main() {
 	let org_dir = cfg.grab().arg("org").conf("org.dir").env("ORGRS_DIR").def("./");
     let org_glob = org_dir.clone() + "**/*.org";
 
-    let mut db = orgdb::OrgDb::new();
-    db.lock().unwrap().reload_all(&org_glob).await;
-    db.lock().unwrap().list_all_files().await;
-    orgdb::OrgDb::watch(db.clone(), &org_dir);
+    {
+        let mut db = orgdb::OrgDb::get();
+        db.lock().unwrap().reload_all(&org_glob).await;
+        db.lock().unwrap().list_all_files().await;
+    }
+    orgdb::OrgDb::watch(&org_dir);
     //db.reload_all(&org_glob).await;
     //db.list_all_files().await;
     //db.watch(&org_dir).await.unwrap();

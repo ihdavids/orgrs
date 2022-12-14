@@ -4,6 +4,8 @@ use glob::glob;
 use std::{collections::HashMap, path::Path, borrow::BorrowMut};
 use notify::{EventKind, Watcher, RecommendedWatcher, RecursiveMode, ReadDirectoryChangesWatcher};
 use std::sync::{Arc, Weak, Mutex};
+use once_cell::sync::Lazy;
+//use org_element::{SyntaxNode};
 /* 
 Org::parse_custom(
     "* TASK Title 1",
@@ -17,14 +19,18 @@ Org::parse_custom(
 
 pub struct OrgDb<'a> {
     pub by_file: HashMap<String,Org<'a>>,
-    pub watcher: Option<ReadDirectoryChangesWatcher>
+    pub watcher: ReadDirectoryChangesWatcher
 }
+
 
 //static mut db: Arc<OrgDb> = Arc::new(OrgDb::new()); 
 
 impl OrgDb<'_> {
-   pub fn new<'a>() -> Arc<Mutex<OrgDb<'a>>> {
-        Arc::new(Mutex::new(OrgDb { by_file: HashMap::new() , watcher: None}))
+   pub fn get() -> Arc<Mutex<OrgDb<'static>>> {
+        static DB: Lazy<Arc<Mutex<OrgDb>>> = Lazy::new( || {
+            Arc::new(Mutex::new(OrgDb { by_file: HashMap::new() , watcher: notify::recommended_watcher(|res: Result<notify::Event, notify::Error> | { OrgDb::watch_handler(res) }).unwrap() }))
+        });
+        return DB.clone();
    }
 
    pub async fn parse_org_file<'a>(filename: &String) -> Result<Org<'a>,std::io::Error>
@@ -67,26 +73,24 @@ impl OrgDb<'_> {
         }
     }
 
-    pub fn watch_handler(weak_db: &Weak<Mutex<OrgDb>>, res: Result<notify::Event, notify::Error>) -> () {
+    pub fn watch_handler(res: Result<notify::Event, notify::Error>) -> () {
             match res {
                 Ok(event) => {
                     println!("event: {:?}", event);
                     match event.kind {
                         Modify => {
+                            let mut db = OrgDb::get();
                             for name in event.paths {
                                 let tmp = String::from(name.to_string_lossy());
-                                weak_db.upgrade()
-                                    .map( |db| {
-                                        let xdb = db.borrow_mut();
+                                let mut xdb = db.borrow_mut();
                                         match xdb.lock() {
-                                            Ok(ydb) => {
+                                            Ok(mut ydb) => {
                                                 ydb.reload(&tmp);
                                             }
                                             Err(e) => {
                                                 println!("Failed to update, could not aquire lock!");
                                             }
                                         }
-                                    });
                             }
                         }
                     }
@@ -97,26 +101,15 @@ impl OrgDb<'_> {
             }
     }
 
-    pub fn watch(mut db: Arc<Mutex<OrgDb>>, path: &String) -> notify::Result<()> {
-        let weak_db = Arc::downgrade(&db.clone());
-
-        // Automatically select the best implementation for your platform.
-
-        let xdb = db.borrow_mut();
-        let mut ydb = xdb.lock().unwrap();
-        ydb.watcher = Some(
-                notify::recommended_watcher(move |res: Result<notify::Event, notify::Error> | {
-                    OrgDb::watch_handler(&weak_db, res)
-                })?
-            );
-        // Add a path to be watched. All files and directories at that path and
-        // below will be monitored for changes.A
-        match ydb.watcher {
-            Some(w) => {
-                w.borrow_mut().watch(Path::new(path), RecursiveMode::Recursive)?;
+    pub fn watch(path: &String) -> notify::Result<()> {
+        let mut db = OrgDb::get();
+        let mut xdb = db.borrow_mut();
+        match xdb.lock() {
+            Ok(mut ydb) => {
+                ydb.watcher.watch(Path::new(path), RecursiveMode::Recursive)?;
             }
-            None => {
-                println!("Failed to start up watcher!");
+            Err(e) => {
+                println!("Failed to update, could not aquire lock!");
             }
         }
 
