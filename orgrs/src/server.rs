@@ -1,39 +1,19 @@
 use jsonrpc_ws_server::*;
 use jsonrpc_core::futures::future::{self};
-use jsonrpc_core::{BoxFuture, IoHandler, Result};
+use jsonrpc_core::{BoxFuture, IoHandler, Result, ErrorCode};
 use std::net::SocketAddr;
 use orgcom::Rpc;
 use log::{info};
 use crate::orgdb::OrgDb;
 use fasteval;
+use fasteval::{Evaler,Compiler,Instruction,Slab};
+use orgize::{Org};
 
 struct RpcImpl;
 
-impl Rpc for RpcImpl {
-	fn protocol_version(&self) -> Result<String> {
-		Ok("version1".into())
-	}
 
-	fn add(&self, a: u64, b: u64) -> Result<u64> {
-		println!("ADDING A{} and B{}",a,b);
-		Ok(a + b)
-	}
-
-	fn call(&self, _: u64) -> BoxFuture<Result<String>> {
-        Box::pin(future::ready(Ok("OK".to_owned())))
-	}
-
-	fn query_headline(&self, query: String) -> Result<Vec<String>> {
-		let r:Vec<String> = Vec::new();
-		let hold = OrgDb::get();
-        let ydb = hold.lock().expect("Failed to access OrgDb in Query Headline");
-
-		/* 
-	    // This example doesn't use any variables, so just use an EmptyNamespace:
- 	    let mut ns = fasteval::EmptyNamespace;
-    	let parser = fasteval::Parser::new();
-    	let mut slab = fasteval::Slab::new();
-    	//let mut map = BTreeMap::new();
+fn eval_node(node: &Org, name: &String, compiled: &Instruction, slab: &Slab) -> std::result::Result<bool,fasteval::Error> {
+		// Make this callback handle each node properly
 	    let mut cb = |name:&str, args:Vec<f64>| -> Option<f64> {
  	    	let mydata : [f64; 3] = [11.1, 22.2, 33.3];
   	    	match name {
@@ -55,20 +35,69 @@ impl Rpc for RpcImpl {
      	   }
     	};
 
+        let val = compiled.eval(slab, &mut cb)?;
+		if val >= 0.0 && val <= 0.0 {
+			Ok(false)
+		} else {
+			Ok(true)
+		}
+}
 
-    	let expr_str = "sin(deg/360 * 2*pi())";
-    	let compiled = parser.parse(expr_str, &mut slab.ps)?.from(&slab.ps).compile(&slab.ps, &mut slab.cs);
+
+impl Rpc for RpcImpl {
+	fn protocol_version(&self) -> Result<String> {
+		Ok("version1".into())
+	}
+
+	fn add(&self, a: u64, b: u64) -> Result<u64> {
+		println!("ADDING A{} and B{}",a,b);
+		Ok(a + b)
+	}
+
+	fn call(&self, _: u64) -> BoxFuture<Result<String>> {
+        Box::pin(future::ready(Ok("OK".to_owned())))
+	}
+
+	fn query_headline(&self, query: String) -> Result<Vec<String>> {
+		let r:Vec<String> = Vec::new();
+		let hold = OrgDb::get();
+        let ydb = hold.lock().expect("Failed to access OrgDb in Query Headline");
+
+		 
+	    // This example doesn't use any variables, so just use an EmptyNamespace:
+ 	    let mut ns = fasteval::EmptyNamespace;
+    	let parser = fasteval::Parser::new();
+    	let mut slab = fasteval::Slab::new();
+    	//let mut map = BTreeMap::new();
+
+    	//let expr_str = "sin(deg/360 * 2*pi())";
+    	let exprRes = parser.parse(query.as_str(), &mut slab.ps);
+		let compiled = match exprRes {
+			Ok(res) => {
+				res.from(&slab.ps).compile(&slab.ps, &mut slab.cs)
+			},
+			Err(_) => {
+				return Err(jsonrpc_core::Error {code: ErrorCode::InvalidParams, message: String::from("Failed to parse expression"), data: None});
+			}
+		};	
+        for (name, node) in &ydb.by_file {
+			// TODO: Iterate over "nodes" and extract info.
+			// TODO: Handle that expect
+			for (item) in node.iter() {
+				if(eval_node(node, name, &compiled, &slab).expect("Hi")) {
+				
+				}
+			}
+            //println!("-> {name}");
+        }
+
     	for deg in 0..360 {
         	//map.insert("deg".to_string(), deg as f64);
         	// When working with compiled constant expressions, you can use the
         	// eval_compiled*!() macros to save a function call:
-        	let val = fasteval::eval_compiled!(compiled, &slab, &mut cb);
         	//eprintln!("sin({}°) = {}", deg, val);
     	}
-*/
-        for (name, _) in &ydb.by_file {
-            println!("-> {name}");
-        }
+
 		return Ok(r)
 	}
 }
