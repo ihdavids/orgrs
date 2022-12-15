@@ -15,6 +15,10 @@ pub trait Rpc {
 	/// Performs asynchronous operation
 	#[rpc(name = "callAsync")]
 	fn call(&self, a: u64) -> BoxFuture<Result<String>>;
+
+	/// Querries for headlines that match a query
+	#[rpc(name = "query_headline")]
+	fn query_headline(&self, query: String) -> Result<Vec<String>>;
 }
 
 #[cfg(test)]

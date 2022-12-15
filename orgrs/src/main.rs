@@ -16,7 +16,7 @@ async fn main() {
 								(@arg org: -o --orgdir +takes_value "org directory")
 							).get_matches();
 	let cfg = clap_conf::with_toml_env(&args, &["{HOME}/.config/orgrs/init.toml","{HOME}/.orgrs.toml","./.orgrs.toml"]);
-	let connect_str = cfg.grab().arg("connect").conf("server.connect").env("ORGRS_CONNECT").def("ws://127.0.0.1:3030/orgrs");
+	let connect_str = cfg.grab().arg("connect").conf("server.connect").env("ORGRS_CONNECT").def("0.0.0.0:3030");
 
 	let org_dir = cfg.grab().arg("org").conf("org.dir").env("ORGRS_DIR").def("./");
     let org_glob = org_dir.clone() + "**/*.org";

@@ -3,7 +3,7 @@ use jsonrpc_core::futures::future::{self};
 use jsonrpc_core::{BoxFuture, IoHandler, Result};
 use std::net::SocketAddr;
 use orgcom::Rpc;
-
+use log::{info};
 
 struct RpcImpl;
 
@@ -20,6 +20,11 @@ impl Rpc for RpcImpl {
 	fn call(&self, _: u64) -> BoxFuture<Result<String>> {
         Box::pin(future::ready(Ok("OK".to_owned())))
 	}
+
+	fn query_headline(&self, query: String) -> Result<Vec<String>> {
+		let r:Vec<String> = Vec::new();
+		return Ok(r)
+	}
 }
 
 pub struct OrgServer
@@ -34,15 +39,15 @@ impl OrgServer
         let mut io = IoHandler::new();
 		io.extend_with(RpcImpl.to_delegate());
    
-		println!("STARTING SERVER");
+		info!("STARTING SERVER");
 		let sock_addr: SocketAddr = connect_str.parse().expect("Unable to parse socket address");
         let server = ServerBuilder::new(io)
             .start(&sock_addr)
             .expect("Server must start with no issues");
     
-		println!("RUNNING WAIT ON SERVER");
+		info!("RUNNING WAIT ON SERVER");
         let v = server.wait().unwrap();
-		println!("WAIT UNRAPPED");
+		info!("WAIT UNRAPPED");
 		return v;
     }
 }
