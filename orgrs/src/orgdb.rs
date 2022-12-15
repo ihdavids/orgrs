@@ -6,6 +6,8 @@ use std::{collections::HashMap, path::Path, borrow::BorrowMut, io::Read};
 use notify::{Watcher, RecursiveMode, ReadDirectoryChangesWatcher};
 use std::sync::{Arc, Mutex};
 use once_cell::sync::Lazy;
+use log::{info, trace, error};
+
 /* 
 Org::parse_custom(
     "* TASK Title 1",
@@ -33,7 +35,7 @@ impl OrgDb<'_> {
 
    pub async fn parse_org_file<'a>(filename: &String) -> Result<Org<'a>,std::io::Error>
    {
-        println!("READING: {}", filename.as_str());
+        trace!("READING: {}", filename.as_str());
         // Have UTF-8 problems with this pathway.
         //let contents = tokio::fs::read_to_string(filename).await?;
 
@@ -46,13 +48,13 @@ impl OrgDb<'_> {
         }
         let contents = String::from_utf8_lossy (&buf);
 
-        println!("PARSING: {}", filename.as_str());
+        trace!("PARSING: {}", filename.as_str());
         Ok(Org::parse_string(contents.to_string()))
    }
 
    pub fn parse_org_file_sync<'a>(filename: &String) -> Result<Org<'a>,std::io::Error>
    {
-        println!("READING SYNC: {}", filename.as_str());
+        trace!("READING SYNC: {}", filename.as_str());
         // Have UTF-8 problems with this pathway.
         //let contents = tokio::fs::read_to_string(filename).await?;
 
@@ -65,7 +67,7 @@ impl OrgDb<'_> {
         }
         let contents = String::from_utf8_lossy (&buf);
 
-        println!("PARSING SYNC: {}", filename.as_str());
+        trace!("PARSING SYNC: {}", filename.as_str());
         Ok(Org::parse_string(contents.to_string()))
    }
 
@@ -81,12 +83,12 @@ impl OrgDb<'_> {
 
     pub fn reload(&mut self, nm: &String) {
         let org: Org = OrgDb::parse_org_file_sync(nm).unwrap();
-        println!("RELOADING: {}",nm);
+        info!("RELOADING: {}",nm);
         self.by_file.insert(nm.clone(), org);
     }
 
     pub fn delete(&mut self, nm: &String) {
-        println!("DELETING: {}",nm);
+        info!("DELETING: {}",nm);
         self.by_file.remove(nm);
     }
 
@@ -99,7 +101,7 @@ impl OrgDb<'_> {
     pub fn watch_handler(res: Result<notify::Event, notify::Error>) -> () {
             match res {
                 Ok(event) => {
-                    println!("event: {:?}", event);
+                    //println!("event: {:?}", event);
                     if event.kind.is_modify() || event.kind.is_create() {
                         let mut db = OrgDb::get();
                         for name in event.paths {
@@ -110,7 +112,7 @@ impl OrgDb<'_> {
                                     ydb.reload(&tmp);
                                 }
                                 Err(_e) => {
-                                    println!("Failed to update, could not aquire lock!");
+                                    error!("Failed to update, could not aquire lock!");
                                 }
                             }
                         }
@@ -124,14 +126,14 @@ impl OrgDb<'_> {
                                     ydb.delete(&tmp);
                                 }
                                 Err(_e) => {
-                                    println!("Failed to update, could not aquire lock!");
+                                    error!("Failed to update, could not aquire lock!");
                                 }
                             }
                         }
                     }
                 },
                 Err(e) => {
-                    println!("watch error: {:?}", e);
+                    error!("watch error: {:?}", e);
                 }
             }
     }
@@ -144,7 +146,7 @@ impl OrgDb<'_> {
                 ydb.watcher.watch(Path::new(path), RecursiveMode::Recursive)?;
             }
             Err(_e) => {
-                println!("Failed to update, could not aquire lock!");
+                error!("Failed to update, could not aquire lock!");
             }
         }
 

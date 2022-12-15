@@ -1,10 +1,13 @@
 use clap_conf::*;
 mod server;
 mod orgdb;
-
+extern crate pretty_env_logger;
+#[macro_use] extern crate log;
 
 #[tokio::main]
 async fn main() {
+    trace!("OrgRs Starting Up!");
+    pretty_env_logger::init_custom_env("ORGRS_LOG");
 	let args = clap_app!(orgrc => 
 								(version: crate_version!())
 								(author: "Ian Davids")
@@ -18,6 +21,7 @@ async fn main() {
 	let org_dir = cfg.grab().arg("org").conf("org.dir").env("ORGRS_DIR").def("./");
     let org_glob = org_dir.clone() + "**/*.org";
 
+    trace!("OrgDb Creation!");
     {
         let db = orgdb::OrgDb::get();
         db.lock().unwrap().reload_all(&org_glob).await;

@@ -20,3 +20,5 @@ notify = {version="5.0.0", default-features = false, feature=["macos_kqueue"] }
 # I probably do not want chrono and indexmap, but I have them working for now.
 orgize = { version = "0.9.0", features = ["chrono", "indexmap"] }
 once_cell = "1.16.0"
+pretty_env_logger = "0.4.0"
+log = "0.4.17"
