@@ -19,14 +19,11 @@ async fn main() {
     let org_glob = org_dir.clone() + "**/*.org";
 
     {
-        let mut db = orgdb::OrgDb::get();
+        let db = orgdb::OrgDb::get();
         db.lock().unwrap().reload_all(&org_glob).await;
         db.lock().unwrap().list_all_files().await;
     }
-    orgdb::OrgDb::watch(&org_dir);
-    //db.reload_all(&org_glob).await;
-    //db.list_all_files().await;
-    //db.watch(&org_dir).await.unwrap();
+    orgdb::OrgDb::watch(&org_dir).expect("Failed to setup watch on org directory ABORT!");
     
     let server = server::OrgServer {};
     server.start(&connect_str);

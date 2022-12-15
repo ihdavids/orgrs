@@ -1,11 +1,11 @@
-use orgize::{Org, ParseConfig};
+//use orgize::{Org, ParseConfig};
+use orgize::{Org};
 use tokio::io::AsyncReadExt;
 use glob::glob;
 use std::{collections::HashMap, path::Path, borrow::BorrowMut, io::Read};
-use notify::{EventKind, Watcher, RecommendedWatcher, RecursiveMode, ReadDirectoryChangesWatcher};
-use std::sync::{Arc, Weak, Mutex};
+use notify::{Watcher, RecursiveMode, ReadDirectoryChangesWatcher};
+use std::sync::{Arc, Mutex};
 use once_cell::sync::Lazy;
-//use org_element::{SyntaxNode};
 /* 
 Org::parse_custom(
     "* TASK Title 1",
@@ -22,8 +22,6 @@ pub struct OrgDb<'a> {
     pub watcher: ReadDirectoryChangesWatcher
 }
 
-
-//static mut db: Arc<OrgDb> = Arc::new(OrgDb::new()); 
 
 impl OrgDb<'_> {
    pub fn get() -> Arc<Mutex<OrgDb<'static>>> {
@@ -111,7 +109,7 @@ impl OrgDb<'_> {
                                 Ok(mut ydb) => {
                                     ydb.reload(&tmp);
                                 }
-                                Err(e) => {
+                                Err(_e) => {
                                     println!("Failed to update, could not aquire lock!");
                                 }
                             }
@@ -125,7 +123,7 @@ impl OrgDb<'_> {
                                 Ok(mut ydb) => {
                                     ydb.delete(&tmp);
                                 }
-                                Err(e) => {
+                                Err(_e) => {
                                     println!("Failed to update, could not aquire lock!");
                                 }
                             }
@@ -145,7 +143,7 @@ impl OrgDb<'_> {
             Ok(mut ydb) => {
                 ydb.watcher.watch(Path::new(path), RecursiveMode::Recursive)?;
             }
-            Err(e) => {
+            Err(_e) => {
                 println!("Failed to update, could not aquire lock!");
             }
         }
