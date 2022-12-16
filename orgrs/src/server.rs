@@ -7,7 +7,7 @@ use log::{info};
 use crate::orgdb::OrgDb;
 use fasteval;
 use fasteval::{Evaler,Compiler,Instruction,Slab};
-use orgize::{Org};
+use orgize::{Org, Event, Element};
 
 struct RpcImpl;
 
@@ -84,8 +84,11 @@ impl Rpc for RpcImpl {
 			// TODO: Iterate over "nodes" and extract info.
 			// TODO: Handle that expect
 			for (item) in node.iter() {
-				if(eval_node(node, name, &compiled, &slab).expect("Hi")) {
-				
+				if let Event::Start(e) = item {
+					if let Element::Headline {..} = e {
+						if(eval_node(node, name, &compiled, &slab).expect("Hi")) {
+						}
+					}
 				}
 			}
             //println!("-> {name}");
