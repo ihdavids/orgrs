@@ -1,7 +1,7 @@
 //use orgize::{Org, ParseConfig};
 use orgize::{Org, Event, Element};
 use orgize::elements::{Title};
-use indextree::{NodeId};
+use indextree::{NodeId,Node,NodeEdge};
 use tokio::io::AsyncReadExt;
 use glob::glob;
 use std::{collections::HashMap, path::Path, borrow::BorrowMut, io::Read};
@@ -10,6 +10,8 @@ use std::sync::{Arc, Mutex};
 use once_cell::sync::Lazy;
 use log::{info, trace, error};
 use colored::Colorize;
+use std::default::Default;
+use std::rc::Rc;
 
 /* 
 Org::parse_custom(
@@ -22,9 +24,35 @@ Org::parse_custom(
 );
 */
 
+pub struct TitleInfo {
+    pub id: NodeId,
+    pub children: Vec<Arc<TitleInfo>>,
+    pub parent: Option<Arc<TitleInfo>>,
+    pub level: usize,
+}
+
+impl TitleInfo {
+    pub fn new(nid: NodeId, level: usize) -> TitleInfo {
+        return TitleInfo {id: nid , children: Vec::new(), parent: None,  level: level};
+    }
+}
+
+pub struct OrgInfo<'a> {
+    pub filename: String,
+    pub org:   Org<'a>,
+    pub nodes: Vec<Arc<TitleInfo>>,
+    pub root: Arc<TitleInfo>,
+}
+
+
+impl OrgInfo<'_> {
+    pub fn new(org: Org, id: NodeId, name: String) -> OrgInfo {
+        return OrgInfo {filename: name, org: org, nodes: Vec::new(), root: Arc::new(TitleInfo::new(id, 0)) };
+    }
+}
 
 pub struct OrgDb<'a> {
-    pub by_file: HashMap<String,Org<'a>>,
+    pub by_file: HashMap<String,OrgInfo<'a>>,
     pub watcher: ReadDirectoryChangesWatcher
 }
 
@@ -106,7 +134,14 @@ impl OrgDb<'_> {
         } else {
             Box::new(::std::iter::empty())
         }
+   }
 
+   pub fn nodes<'a>(org: &'a Org) -> Box<dyn Iterator<Item = NodeEdge>> {
+        if let Some(root) = Self::root(org) {
+            Box::new(root.traverse(org.arena()))
+        } else {
+            Box::new(::std::iter::empty())
+        }
    }
 
    pub async fn reload_all(&mut self, path: &String) {
@@ -120,22 +155,59 @@ impl OrgDb<'_> {
 			// TODO: Handle that expect
             println!("--> {name}");
             //Headings(&org);
-            for (item) in Self::titles(&org) {
-                println!("{:?}", item);
+            //for (item) in Self::titles(&org) {
+            //    println!("{:?}", item);
+            //}
             }
-            /* 
-			for (item) in org.iter() {
-				if let Event::Start(e) = item {
-                    println!("{:?}", e);
-					//if let Element::Headline {..} = e {
+            if let Some(rid) = Self::root(&org) {
+                let mut orgref = OrgInfo::new(org, rid, nm.clone());
+                let mut cur = orgref.root.clone();
+
+                for (edge) in Self::nodes(&orgref.org) {
+                    match edge {
+                        NodeEdge::Start(node) => { 
+                          let e = &orgref.org[node];
+                          match e {
+                            Element::Title(t) => {
+                                let mut tifo = Arc::new(TitleInfo::new(node, t.level));
+
+                                orgref.nodes.push(tifo.clone());
+
+                                if t.level > cur.level {
+                                   let mut mifo = tifo.borrow_mut();
+                                   mifo.parent = Some(cur.clone());
+                                   cur.children.push(tifo.clone());
+                                } else {
+                                    error!("PARSE ERROR!!!!, LEVEL DOES NOT MATCH");
+                                }
+                            }
+                            _ => {}
+                          }
+                        },
+                        NodeEdge::End(node) => { 
+                          let e = &orgref.org[node];
+                          if let Some(x) = cur.parent.clone() {
+                            cur = x;
+                          } else {
+                            cur = orgref.root.clone();
+                          }
+                        }
+                    }
+                }
+                self.by_file.insert(nm.clone(), orgref);
+                /* 
+			    for (item) in orgref.org.iter() {
+				    if let Event::Start(e) = item {
+                        //println!("{:?}", e);
+					    if let Element::Title(t) = e {
+                            orgref.nodes.append(orgref.org.arena().get_node_id(e));
+
 					//	if(eval_node(node, name, &compiled, &slab).expect("Hi")) {
 					//	}
-					//}
+					    }
 				}
+                */
             }
-            */
-            }
-            self.by_file.insert(nm.clone(), org);
         }
     }
 
