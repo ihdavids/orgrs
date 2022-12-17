@@ -1,5 +1,7 @@
 //use orgize::{Org, ParseConfig};
-use orgize::{Org};
+use orgize::{Org, Event, Element};
+use orgize::elements::{Title};
+use indextree::{NodeId};
 use tokio::io::AsyncReadExt;
 use glob::glob;
 use std::{collections::HashMap, path::Path, borrow::BorrowMut, io::Read};
@@ -7,6 +9,7 @@ use notify::{Watcher, RecursiveMode, ReadDirectoryChangesWatcher};
 use std::sync::{Arc, Mutex};
 use once_cell::sync::Lazy;
 use log::{info, trace, error};
+use colored::Colorize;
 
 /* 
 Org::parse_custom(
@@ -18,6 +21,7 @@ Org::parse_custom(
     },
 );
 */
+
 
 pub struct OrgDb<'a> {
     pub by_file: HashMap<String,Org<'a>>,
@@ -71,12 +75,66 @@ impl OrgDb<'_> {
         Ok(Org::parse_string(contents.to_string()))
    }
 
+   /* 
+   pub fn Headings(org: &Org) -> impl Iterator<Item = &Title<'_>> {
+        org.root
+            .descendants(&org.arena)
+            .skip(1)
+            .filter_map(move |node| match &org[node] {
+                Element::Title(t) => Some(t),
+                _ => None,
+            })
+   }
+   */
+
+   pub fn root(org: & Org) -> Option<NodeId> {
+        for (item) in org.arena().iter() {
+            let rootId = org.arena().get_node_id(item);
+            return rootId;
+        }
+        return None;
+   }
+
+   pub fn titles<'a>(org: &'a Org) -> Box<dyn Iterator<Item = &'a Title<'a>>+'a> {
+        if let Some(root) = Self::root(org) {
+            Box::new(root.descendants(org.arena())
+                .skip(1)
+                .filter_map(move |node| match &org[node] {
+                    Element::Title(t) => Some(t),
+                    _ => None,
+            }))
+        } else {
+            Box::new(::std::iter::empty())
+        }
+
+   }
+
    pub async fn reload_all(&mut self, path: &String) {
         for entry in glob(path.as_str()).unwrap() {
             let f = entry.unwrap();
             let name = f.as_os_str().to_str().unwrap();
             let nm = String::from(name);
             let org: Org = OrgDb::parse_org_file(&nm).await.unwrap();
+            if nm.contains("\\inxile_tasks_old") {
+			// TODO: Iterate over "nodes" and extract info.
+			// TODO: Handle that expect
+            println!("--> {name}");
+            //Headings(&org);
+            for (item) in Self::titles(&org) {
+                println!("{:?}", item);
+            }
+            /* 
+			for (item) in org.iter() {
+				if let Event::Start(e) = item {
+                    println!("{:?}", e);
+					//if let Element::Headline {..} = e {
+					//	if(eval_node(node, name, &compiled, &slab).expect("Hi")) {
+					//	}
+					//}
+				}
+            }
+            */
+            }
             self.by_file.insert(nm.clone(), org);
         }
     }
@@ -93,6 +151,7 @@ impl OrgDb<'_> {
     }
 
     pub async fn list_all_files(&self) {
+        println!("[{}]","DB FILE LIST".blue());
         for (name, _) in &self.by_file {
             println!("-> {name}");
         }
